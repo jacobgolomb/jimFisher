@@ -1,0 +1,4 @@
+jimgw
+corner
+astropy
+tqdm
