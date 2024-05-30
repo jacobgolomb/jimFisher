@@ -17,7 +17,7 @@ import inspect
 import jimgw.single_event.detector
 import jimgw.single_event.waveform
 from tqdm import trange
-from .utils import filter_samples, convert_to_physical, convert_to_ripple_params, IFO_GEOMETRIC_KEYS, DEFAULT_FISHER_PARAMS, WF_FUNCS, BOUNDS, ASD_FILES, optimal_snr, draw_samples, jimGW_detectors, inner, compute_distance
+from .utils import filter_samples, convert_to_physical, convert_to_ripple_params, IFO_GEOMETRIC_KEYS, DEFAULT_FISHER_PARAMS, WF_FUNCS, BOUNDS, ASD_FILES, optimal_snr, draw_samples, jimGW_detectors, inner, compute_distance, convert_to_fisher_params
 
 class FisherSamples(object):
     def __init__(self, name="CE", fmin = 20, fmax = None, 
@@ -52,11 +52,13 @@ class FisherSamples(object):
         self.duration = duration
         
     def set_at_true(self, parameters):
-        self.true_parameters = convert_to_ripple_params(parameters)
+        self.true_parameters = convert_to_fisher_params(parameters, self.fisher_parameters + ["log_luminosity_distance"])
+        self.true_parameters.update(convert_to_ripple_params(self.true_parameters))
         self.true_parameters.update({"gmst": self.gmst, "epoch": self.epoch})
+        
         snr = self.get_snr(self.true_parameters)
         self.true_parameters['rho0'] = snr
-        self.true_parameters['rho'] = snr
+        self.true_parameters['snr'] = snr
         self.true_parameters['dL0'] = self.true_parameters['d_L']
         self.covariance_at_true = self.get_covariance(self.true_parameters)
         
@@ -149,11 +151,11 @@ class FisherSamples(object):
         self.fisher_argnums = fisher_argnums
         self.fixed_argnames = [arg for ii, arg in enumerate(argnames) if ii not in fisher_argnums]
     
-    def _get_signal_detector(self, logM_c, q, s1_x, s1_y, s1_z, s2_x, s2_y, s2_z, logdL, phase_c, cos_iota,
+    def _get_signal_detector(self, log_chirp_mass, mass_ratio, s1_x, s1_y, s1_z, s2_x, s2_y, s2_z, logdL, phase_c, cos_iota,
                             ra, sin_dec, psi, t_c):
         
-        params = {"logM_c": logM_c, "q": q, "s1_z": s1_z, "s2_z": s2_z,
-        "logdL": logdL, "phase_c": phase_c, "cos_iota": cos_iota, "ra": ra, "sin_dec": sin_dec, 
+        params = {"log_chirp_mass": log_chirp_mass, "mass_ratio": mass_ratio, "s1_z": s1_z, "s2_z": s2_z,
+        "log_luminosity_distance": log_luminosity_distance, "phase_c": phase_c, "cos_iota": cos_iota, "ra": ra, "sin_dec": sin_dec, 
         "psi": psi, "t_c": t_c, "gmst": self.gmst, "epoch": self.epoch}
         
         converted_parameters = convert_to_ripple_params(params)
@@ -162,16 +164,16 @@ class FisherSamples(object):
         return h
     
     @partial(jax.jit, static_argnums=(0,))
-    def _get_scaled_signal_detector(self, logM_c, q,  s1_x, s1_y, s1_z, s2_x, s2_y, s2_z, rho, phase_c, cos_iota, ra, sin_dec, 
-                                    psi, t_c, rho0, dL0):
+    def _get_scaled_signal_detector(self, log_chirp_mass, mass_ratio, s1_x, s1_y, s1_z, s2_x, s2_y, s2_z, snr, phase_c, cos_iota,
+                            ra, sin_dec, psi, t_c, rho0, dL0):
         logdL0 = jnp.log(dL0)
-        params = {"logM_c": logM_c, "q": q, "s1_z": s1_z, "s2_z": s2_z,
-        "logdL": logdL0, "phase_c": phase_c, "cos_iota": cos_iota, "ra": ra, "sin_dec": sin_dec, 
-        "psi": psi, "t_c": t_c, "gmst": self.gmst, 'epoch': self.epoch}
+        params = {"log_chirp_mass": log_chirp_mass, "mass_ratio": mass_ratio, "s1_z": s1_z, "s2_z": s2_z,
+        "log_luminosity_distance": logdL0, "phase_c": phase_c, "cos_iota": cos_iota, "ra": ra, "sin_dec": sin_dec, 
+        "psi": psi, "t_c": t_c, "gmst": self.gmst, "epoch": self.epoch}
         
         converted_parameters = convert_to_ripple_params(params)
         
-        h = self.get_signal_in_detector(converted_parameters) * rho / rho0
+        h = self.get_signal_in_detector(converted_parameters) * snr / rho0
         return h
 
     def get_snr(self, parameters):

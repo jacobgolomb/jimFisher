@@ -16,7 +16,7 @@ setup(
     description='Generate samples. Do whatever you want with them.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/your_username/your_project',
+    url='https://github.com/jacobgolomb/jimFisher',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
