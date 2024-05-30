@@ -1,10 +1,10 @@
 README.md
 setup.py
+JimFisher/Fisher.py
+JimFisher/__init__.py
+JimFisher/utils.py
 jimFisher.egg-info/PKG-INFO
 jimFisher.egg-info/SOURCES.txt
 jimFisher.egg-info/dependency_links.txt
 jimFisher.egg-info/requires.txt
 jimFisher.egg-info/top_level.txt
-src/Fisher.py
-src/__init__.py
-src/utils.py
