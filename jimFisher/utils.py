@@ -29,11 +29,12 @@ LABELS = {'chirp_mass': r"$\mathcal{M}_c$",
          'dec': r"$\delta$",
          'ra': r"$\alpha$",
          's1_z': r"$s_{1z}$",
-          's2_z': r"$s_{2z}$",
-          'cos_iota': r"$\cos\iota$",
+         's2_z': r"$s_{2z}$",
+         'cos_iota': r"$\cos\iota$",
          'snr': r"$\rho$",
          'mass_1': r"$m_1$",
-         'mass_2': r"$m_2$"}
+         'mass_2': r"$m_2$",
+         'chi_eff': r"$\chi_{\rm eff}$"}
 
 mass_params=['mass_1', 'mass_2', 'component_masses', 'total_mass', 'symmetric_mass_ratio']
 
@@ -96,6 +97,9 @@ def convert_to_physical(samples, rho0=None, dL0=None, generate=['component_masse
             else:
                 converted[key] = converted_masses[key]
                 keys.append(key)
+    if 'chi_eff' in generate:
+        converted['chi_eff'] = (converted['s1_z'] + converted['mass_ratio'] * converted['s2_z']) / (1 + converted['mass_ratio'])
+        keys.append('chi_eff')
         
     return {key: converted[key] for key in keys}
 

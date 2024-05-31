@@ -55,7 +55,6 @@ class FisherSamples(object):
         self.true_parameters = convert_to_fisher_params(parameters, self.fisher_parameters + ["log_luminosity_distance"])
         self.true_parameters.update(convert_to_ripple_params(self.true_parameters))
         self.true_parameters.update({"gmst": self.gmst, "epoch": self.epoch})
-        
         snr = self.get_snr(self.true_parameters)
         self.true_parameters['rho0'] = snr
         self.true_parameters['snr'] = snr
@@ -175,10 +174,16 @@ class FisherSamples(object):
         
         h = self.get_signal_in_detector(converted_parameters) * snr / rho0
         return h
-
+    
+    @partial(jax.jit, static_argnums=(0,))
     def get_snr(self, parameters):
-        converted_parameters = convert_to_ripple_params(parameters)
-        signal = self.get_signal_in_detector(parameters)
+        fisher_params = convert_to_fisher_params(parameters, self.fisher_parameters + ["log_luminosity_distance"])
+        converted_parameters = convert_to_ripple_params(fisher_params)
+
+        converted_parameters['gmst'] = parameters.get('gmst', self.gmst)
+        converted_parameters['epoch'] = self.epoch
+        
+        signal = self.get_signal_in_detector(converted_parameters)
         snr = optimal_snr(signal, self.ifo.psd, self.frequency_array)
         return snr
 
@@ -195,8 +200,6 @@ class FisherSamples(object):
         return jac
     
     def get_fisher(self, parameters=None):
-        if not parameters:
-            parameters = self.parameters
         jacobian = self.get_jacobian(parameters)
         fisher_matrix = jnp.zeros((len(jacobian), len(jacobian)))
         for ii in range(len(jacobian)):
@@ -206,9 +209,8 @@ class FisherSamples(object):
                 fisher_matrix = fisher_matrix.at[jj,ii].set(element)    
         return fisher_matrix
     
+    @partial(jax.jit, static_argnums=(0,))
     def get_covariance(self, parameters=None):
-        if not parameters:
-            parameters = self.parameters
         fisher = self.get_fisher(parameters)
         cov = jnp.linalg.inv(fisher)
         return cov
